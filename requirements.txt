@@ -1,0 +1,11 @@
+Flask
+sqlalchemy
+werkzeug
+python-magic
+PyPDF2
+langchain-groq
+langchain-community
+langchain-google-genai
+faiss-cpu
+numpy
+scikit-learn

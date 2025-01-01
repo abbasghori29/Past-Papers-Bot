@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, jsonify, send_file, Response
 from config import Config
-from models import db, Document,DocumentEmbedding
+from models import db, Document, DocumentEmbedding
 from werkzeug.utils import secure_filename
 import os
 import shutil
@@ -13,6 +13,20 @@ from werkzeug.datastructures import FileStorage
 import hashlib
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from langchain_groq import ChatGroq
+from langchain_community.utilities import SQLDatabase
+from langchain_community.agent_toolkits import create_sql_agent
+from langchain.prompts import PromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+import json
+import faiss
+import numpy as np
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from sklearn.preprocessing import normalize
+from datetime import datetime
+import re
+from sqlalchemy.orm import sessionmaker
+
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -418,9 +432,7 @@ def rename_folder():
         return jsonify({'error': str(e)}), 500
 
 
-import shutil
-from flask import jsonify, request
-from sqlalchemy.exc import SQLAlchemyError
+
 
 @app.route('/api/delete', methods=['DELETE'])
 def delete_item():
@@ -540,11 +552,7 @@ def delete_all_documents():
 
 
 
-import os
-import faiss
-import numpy as np
-from models import db, Document, DocumentEmbedding
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+
 os.environ["GOOGLE_API_KEY"]="AIzaSyCPmn7EE7hY2-hbhrvx3c17tVobQBh5_Gk"
 
 embeddings_model = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
@@ -552,9 +560,6 @@ index = None
 document_ids = []
 
 
-import numpy as np
-import faiss
-from sqlalchemy.orm import sessionmaker
 
 def initialize_faiss_index():
     global index, document_ids
@@ -652,14 +657,7 @@ def update_embedding_on_delete(doc_id):
         db.session.close()
 
 
-import os
-import faiss
-import numpy as np
-from models import db, Document, DocumentEmbedding
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from sklearn.preprocessing import normalize
-from datetime import datetime
-import re
+
 
 os.environ["GOOGLE_API_KEY"]="AIzaSyCPmn7EE7hY2-hbhrvx3c17tVobQBh5_Gk"
 
@@ -803,12 +801,6 @@ def get_similar_documents(query, top_k=20):
 
 
 
-from langchain_groq import ChatGroq
-from langchain_community.utilities import SQLDatabase
-from langchain_community.agent_toolkits import create_sql_agent
-from langchain.prompts import PromptTemplate
-from langchain_core.output_parsers import StrOutputParser
-import json
 os.environ["GROQ_API_KEY"] = "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"
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
