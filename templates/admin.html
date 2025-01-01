@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cloud Drive</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background: #f5f6fa;
+      color: #2d3436;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      color: #2d3436;
+      margin: 20px 0;
+      text-align: center;
+    }
+
+    .breadcrumb {
+      background: white;
+      padding: 15px 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      margin-bottom: 20px;
+    }
+
+    .breadcrumb span {
+      cursor: pointer;
+      color: #0984e3;
+      font-weight: 500;
+      transition: color 0.3s;
+    }
+
+    .breadcrumb span:hover {
+      color: #2980b9;
+    }
+
+    .actions {
+      margin: 20px 0;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: #0984e3;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #2980b9;
+      transform: translateY(-2px);
+    }
+
+    .content-wrapper {
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+
+    .folder-item,
+    .file-item {
+      padding: 15px;
+      margin: 8px 0;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      transition: all 0.3s;
+      background: white;
+      border: 1px solid #dfe6e9;
+    }
+
+    .folder-item:hover,
+    .file-item:hover {
+      background: #f8f9fa;
+      transform: translateX(5px);
+    }
+
+    .folder-icon,
+    .file-icon {
+      font-size: 1.5rem;
+      margin-right: 15px;
+      color: #0984e3;
+    }
+
+    .item-name {
+      flex-grow: 1;
+      font-weight: 500;
+    }
+
+    .item-actions {
+      display: flex;
+      gap: 10px;
+      opacity: 0.7;
+      transition: opacity 0.3s;
+    }
+
+    .folder-item:hover .item-actions,
+    .file-item:hover .item-actions {
+      opacity: 1;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+    }
+
+    .modal-content {
+      background: white;
+      margin: 15% auto;
+      padding: 30px;
+      width: 90%;
+      max-width: 500px;
+      border-radius: 15px;
+      position: relative;
+    }
+
+    .close {
+      position: absolute;
+      right: 20px;
+      top: 15px;
+      font-size: 24px;
+      cursor: pointer;
+      color: #636e72;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 12px;
+      margin: 15px 0;
+      border: 2px solid #dfe6e9;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+
+    .loading-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.8);
+      z-index: 9999;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+
+    .progress-bar {
+      width: 0%;
+      height: 20px;
+      background-color: #0984e3;
+      border-radius: 10px;
+      transition: width 0.3s ease-in-out;
+    }
+
+    .progress-text {
+      margin-top: 10px;
+      font-size: 16px;
+      color: #2d3436;
+    }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 5px solid #f3f3f3;
+      border-top: 5px solid #0984e3;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    @media (max-width: 768px) {
+      .actions {
+        flex-direction: column;
+      }
+
+      .btn {
+        width: 100%;
+      }
+
+      .item-actions {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1><i class="fas fa-cloud"></i> AorySoft Drive</h1>
+
+    <div class="breadcrumb" id="breadcrumb">
+      <span data-path="root">Root</span>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" onclick="showCreateFolderModal()">
+        <i class="fas fa-folder-plus"></i> New Folder
+      </button>
+      <input type="file" id="fileInput" multiple style="display:none">
+      <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+        <i class="fas fa-file-upload"></i> Upload Files
+      </button>
+      <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none">
+      <button class="btn btn-primary" onclick="document.getElementById('folderInput').click()">
+        <i class="fas fa-folder-upload"></i> Upload Folder
+      </button>
+    </div>
+
+    <div class="content-wrapper">
+      <div id="content"></div>
+    </div>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+    <div class="progress-container">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+    <div class="progress-text" id="progressText">0%</div>
+  </div>
+
+  <!-- Modals -->
+  <div id="createFolderModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeModal('createFolderModal')">&times;</span>
+      <h2><i class="fas fa-folder-plus"></i> Create New Folder</h2>
+      <input type="text" id="newFolderName" placeholder="Enter folder name">
+      <button class="btn btn-primary" onclick="createFolder()">Create</button>
+    </div>
+  </div>
+
+  <div id="renameModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeModal('renameModal')">&times;</span>
+      <h2><i class="fas fa-edit"></i> Rename Item</h2>
+      <input type="text" id="newItemName" placeholder="Enter new name">
+      <button class="btn btn-primary" onclick="renameItem()">Rename</button>
+    </div>
+  </div>
+
+  <div id="deleteModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeModal('deleteModal')">&times;</span>
+      <h2><i class="fas fa-trash-alt"></i> Confirm Delete</h2>
+      <p>Are you sure you want to delete this item?</p>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="confirmDelete()">Delete</button>
+        <button class="btn" onclick="closeModal('deleteModal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentPath = getInitialPath();
+
+    let selectedItem = null;
+
+    document.getElementById('fileInput').addEventListener('change', uploadFiles);
+    document.getElementById('folderInput').addEventListener('change', uploadFolder);
+
+    window.addEventListener('popstate', function(e) {
+    const path = getInitialPath();
+    loadContent(path);
+});
+
+// Initialize content on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const initialPath = getInitialPath();
+    loadContent(initialPath);
+});
+
+    function getInitialPath() {
+    return window.location.hash ? decodeURIComponent(window.location.hash.slice(1)) : '';
+}
+function updateUrlHash(path) {
+    window.history.pushState(null, '', `#${path}`);
+}
+
+    function showLoading() {
+      document.getElementById('loadingOverlay').style.display = 'flex';
+    }
+
+    function hideLoading() {
+      document.getElementById('loadingOverlay').style.display = 'none';
+    }
+    function constructPath(...parts) {
+    // Filter out empty parts and join with forward slashes
+    return parts.filter(part => part).join('/').replace(/\/+/g, '/');
+}
+    function updateBreadcrumb(path) {
+    const parts = path ? path.split('/').filter(p => p) : [];
+    let html = '<span class="breadcrumb-item" data-path="" onclick="loadContent(\'\')"><i class="fas fa-home"></i> Home</span>';
+    let currentPath = '';
+
+    parts.forEach((part, index) => {
+        currentPath = constructPath(currentPath, part);
+        html += ' <i class="fas fa-chevron-right"></i> ';
+        html += `<span class="breadcrumb-item" data-path="${currentPath}" onclick="loadContent('${currentPath}')">${part}</span>`;
+    });
+
+    document.getElementById('breadcrumb').innerHTML = html;
+}
+
+    function loadContent(path) {
+    showLoading();
+    currentPath = path;
+    updateUrlHash(path);
+
+    fetch(`/api/content?path=${encodeURIComponent(path)}`)
+        .then(response => response.json())
+        .then(data => {
+            updateBreadcrumb(path);
+            displayContent(data);
+        })
+        .catch(error => console.error('Error:', error))
+        .finally(() => hideLoading());
+}
+
+    function displayContent(data) {
+    const contentDiv = document.getElementById('content');
+    let html = '';
+
+    data.folders.forEach(folder => {
+        const folderPath = constructPath(currentPath, folder.name);
+        html += `
+            <div class="folder-item" onclick="loadContent('${folderPath}')">
+                <i class="fas fa-folder folder-icon"></i>
+                <span class="item-name">${folder.name}</span>
+                <div class="item-actions">
+                    <button class="btn" onclick="showRenameModal('${folderPath}', '${folder.name}', 'folder'); event.stopPropagation();">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn" onclick="showDeleteModal('${folderPath}', 'folder'); event.stopPropagation();">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>`;
+    });
+
+    data.files.forEach(file => {
+        const filePath = constructPath(currentPath, file.name);
+        html += `
+            <div class="file-item">
+                <i class="fas fa-file file-icon"></i>
+                <span class="item-name" onclick="viewFile('${file.id}')">${file.name}</span>
+                <div class="item-actions">
+                    <button class="btn" onclick="showRenameModal('${filePath}', '${file.name}', 'file')">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn" onclick="showDeleteModal('${file.id}', 'file')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>`;
+    });
+
+    contentDiv.innerHTML = html;
+}
+
+    function uploadFiles(event) {
+      showLoading();
+      const formData = new FormData();
+      const files = event.target.files;
+      let loaded = 0;
+      const total = Array.from(files).reduce((acc, file) => acc + file.size, 0);
+
+      for (let file of files) {
+        formData.append('files[]', file);
+      }
+      formData.append('path', currentPath);
+
+      const xhr = new XMLHttpRequest();
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable) {
+          const percentComplete = (event.loaded / event.total) * 100;
+          updateProgress(percentComplete);
+        }
+      });
+
+      xhr.onload = function () {
+        if (xhr.status === 200) {
+          const data = JSON.parse(xhr.responseText);
+          loadContent(currentPath);
+          event.target.value = '';
+        }
+      };
+
+      xhr.onerror = function () {
+        console.error('Error uploading files');
+      };
+
+      xhr.onloadend = function () {
+        hideLoading();
+        resetProgress();
+      };
+
+      xhr.open('POST', '/api/upload', true);
+      xhr.send(formData);
+    }
+
+    function uploadFolder(event) {
+      showLoading();
+      const formData = new FormData();
+      const files = event.target.files;
+      let loaded = 0;
+      const total = Array.from(files).reduce((acc, file) => acc + file.size, 0);
+
+      for (let file of files) {
+        formData.append('files[]', file);
+        formData.append('paths[]', file.webkitRelativePath);
+      }
+      formData.append('path', currentPath);
+
+      const xhr = new XMLHttpRequest();
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable) {
+          const percentComplete = (event.loaded / event.total) * 100;
+          updateProgress(percentComplete);
+        }
+      });
+
+      xhr.onload = function () {
+        if (xhr.status === 200) {
+          const data = JSON.parse(xhr.responseText);
+          loadContent(currentPath);
+          event.target.value = '';
+        }
+      };
+
+      xhr.onerror = function () {
+        console.error('Error uploading folder');
+      };
+
+      xhr.onloadend = function () {
+        hideLoading();
+        resetProgress();
+      };
+
+      xhr.open('POST', '/api/upload-folder', true);
+      xhr.send(formData);
+    }
+    function updateProgress(percent) {
+      const progressBar = document.getElementById('progressBar');
+      const progressText = document.getElementById('progressText');
+      const roundedPercent = Math.round(percent);
+
+      progressBar.style.width = `${roundedPercent}%`;
+      progressText.textContent = `${roundedPercent}%`;
+    }
+
+    function resetProgress() {
+      const progressBar = document.getElementById('progressBar');
+      const progressText = document.getElementById('progressText');
+
+      progressBar.style.width = '0%';
+      progressText.textContent = '0%';
+    }
+
+    function showCreateFolderModal() {
+      document.getElementById('createFolderModal').style.display = 'block';
+    }
+   
+    function showDeleteModal(id, type) {
+      selectedItem = { id, type };
+      document.getElementById('deleteModal').style.display = 'block';
+    }
+    function closeModal(modalId) {
+      document.getElementById(modalId).style.display = 'none';
+    }
+    function createFolder() {
+      const folderName = document.getElementById('newFolderName').value;
+      if (!folderName) return;
+
+      fetch('/api/folder', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: folderName,
+          path: currentPath
+        })
+      })
+        .then(response => response.json())
+        .then(data => {
+          loadContent(currentPath);
+          closeModal('createFolderModal');
+          document.getElementById('newFolderName').value = '';
+        })
+        .catch(error => console.error('Error:', error));
+    }
+    function showRenameModal(path, name, type) {
+    selectedItem = {
+        id: type === 'file' ? path.split('/').pop() : path,
+        type,
+        name,
+        path: currentPath
+    };
+    document.getElementById('newItemName').value = name;
+    document.getElementById('renameModal').style.display = 'block';
+}
+
+function renameItem() {
+    const newName = document.getElementById('newItemName').value;
+    if (!newName || !selectedItem) return;
+
+    const endpoint = selectedItem.type === 'folder' ? '/api/rename-folder' : '/api/rename-file';
+    
+    const payload = selectedItem.type === 'folder' ? {
+        folderPath: constructPath(selectedItem.path, selectedItem.name),
+        newName: newName,
+        currentPath: selectedItem.path
+    } : {
+        fileId: constructPath(selectedItem.path, selectedItem.name),
+        newName: newName,
+        currentPath: selectedItem.path
+    };
+
+    fetch(endpoint, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+    })
+    .then(response => response.json())
+    .then(data => {
+        loadContent(currentPath);
+        closeModal('renameModal');
+    })
+    .catch(error => console.error('Error:', error));
+}
+    function confirmDelete() {
+      if (!selectedItem) return;
+
+      fetch('/api/delete', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: selectedItem.id,
+          type: selectedItem.type
+        })
+      })
+        .then(response => response.json())
+        .then(data => {
+          loadContent(currentPath);
+          closeModal('deleteModal');
+        })
+        .catch(error => console.error('Error:', error));
+    }
+    function viewFile(fileId) {
+      window.open(`/api/file/${fileId}`, '_blank');
+    }
+
+
+  </script>
+</body>
+
+</html>

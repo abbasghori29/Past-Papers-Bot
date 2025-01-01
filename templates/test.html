@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cloud Drive</title>
+  <style>
+    .breadcrumb {
+      padding: 10px;
+      background-color: #f8f9fa;
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
+
+    .breadcrumb span {
+      cursor: pointer;
+      color: #007bff;
+    }
+
+    .breadcrumb span:hover {
+      text-decoration: underline;
+    }
+
+    .folder-item,
+    .file-item {
+      padding: 8px;
+      margin: 4px 0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+    }
+
+    .folder-item:hover,
+    .file-item:hover {
+      background-color: #f8f9fa;
+    }
+
+    .folder-icon,
+    .file-icon {
+      margin-right: 10px;
+    }
+
+    .actions {
+      margin: 20px 0;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      margin-right: 10px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      background-color: #007bff;
+      color: white;
+    }
+
+    .btn:hover {
+      background-color: #0056b3;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-content {
+      background-color: white;
+      margin: 15% auto;
+      padding: 20px;
+      width: 50%;
+      border-radius: 4px;
+    }
+
+    .close {
+      float: right;
+      cursor: pointer;
+      font-size: 24px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Cloud Drive</h1>
+
+  <div class="breadcrumb" id="breadcrumb">
+    <span data-path="root">Root</span>
+  </div>
+
+  <div class="actions">
+    <button class="btn" onclick="showCreateFolderModal()">New Folder</button>
+    <input type="file" id="fileInput" multiple style="display:none">
+    <button class="btn" onclick="document.getElementById('fileInput').click()">Upload Files</button>
+    <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none">
+    <button class="btn" onclick="document.getElementById('folderInput').click()">Upload Folder</button>
+  </div>
+
+  <div id="content"></div>
+
+  <!-- Create Folder Modal -->
+  <div id="createFolderModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeModal('createFolderModal')">&times;</span>
+      <h2>Create New Folder</h2>
+      <input type="text" id="newFolderName" placeholder="Folder name">
+      <button class="btn" onclick="createFolder()">Create</button>
+    </div>
+  </div>
+
+  <!-- Rename Modal -->
+  <div id="renameModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeModal('renameModal')">&times;</span>
+      <h2>Rename Item</h2>
+      <input type="text" id="newItemName" placeholder="New name">
+      <button class="btn" onclick="renameItem()">Rename</button>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div id="deleteModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeModal('deleteModal')">&times;</span>
+      <h2>Confirm Delete</h2>
+      <p>Are you sure you want to delete this item?</p>
+      <button class="btn" onclick="confirmDelete()">Delete</button>
+      <button class="btn" onclick="closeModal('deleteModal')">Cancel</button>
+    </div>
+  </div>
+
+  <script>
+    let currentPath = '';
+    let selectedItem = null;
+
+    document.getElementById('fileInput').addEventListener('change', uploadFiles);
+    document.getElementById('folderInput').addEventListener('change', uploadFolder);
+
+    loadContent('');
+
+    function updateBreadcrumb(path) {
+    const parts = path ? path.split('/') : [];
+    let html = '<span data-path="" onclick="loadContent(\'\')">Home</span>';
+    let currentPath = '';
+    
+    parts.forEach((part, index) => {
+        currentPath += (currentPath ? '/' : '') + part;
+        html += ' > ';
+        html += `<span data-path="${currentPath}" onclick="loadContent('${currentPath}')">${part}</span>`;
+    });
+    
+    document.getElementById('breadcrumb').innerHTML = html;
+}
+
+
+    function loadContent(path) {
+      currentPath = path;
+
+      fetch(`/api/content?path=${path}`)
+        .then(response => response.json())
+        .then(data => {
+          updateBreadcrumb(path);
+          displayContent(data);
+        })
+        .catch(error => console.error('Error:', error));
+    }
+
+
+    function displayContent(data) {
+    const contentDiv = document.getElementById('content');
+    let html = '';
+
+    data.folders.forEach(folder => {
+        const folderPath = currentPath ? `${currentPath}/${folder.name}` : folder.name;
+        html += `
+            <div class="folder-item">
+                <span class="folder-icon" onclick="loadContent('${folderPath}')">📁</span>
+                <span onclick="loadContent('${folderPath}')">${folder.name}</span>
+                <div style="margin-left: auto;">
+                    <button onclick="showRenameModal('${folderPath}', '${folder.name}', 'folder')">Rename</button>
+                    <button onclick="showDeleteModal('${folderPath}', 'folder')">Delete</button>
+                </div>
+            </div>`;
+    });
+
+      data.files.forEach(file => {
+        html += `
+                    <div class="file-item">
+                        <span class="file-icon">📄</span>
+                        <span onclick="viewFile('${file.id}')">${file.name}</span>
+                        <div style="margin-left: auto;">
+                            <button onclick="showRenameModal('${file.id}', '${file.name}', 'file')">Rename</button>
+                            <button onclick="showDeleteModal('${file.id}', 'file')">Delete</button>
+                        </div>
+                    </div>`;
+      });
+
+      contentDiv.innerHTML = html;
+    }
+
+    function uploadFiles(event) {
+      const formData = new FormData();
+      const files = event.target.files;
+
+      for (let file of files) {
+        formData.append('files[]', file);
+      }
+      formData.append('path', currentPath);
+
+      fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      })
+        .then(response => response.json())
+        .then(data => {
+          loadContent(currentPath);
+          event.target.value = '';
+        })
+        .catch(error => console.error('Error:', error));
+    }
+
+    function uploadFolder(event) {
+      const formData = new FormData();
+      const files = event.target.files;
+
+      for (let file of files) {
+        formData.append('files[]', file);
+        formData.append('paths[]', file.webkitRelativePath);
+      }
+      formData.append('path', currentPath);
+
+      fetch('/api/upload-folder', {
+        method: 'POST',
+        body: formData
+      })
+        .then(response => response.json())
+        .then(data => {
+          loadContent(currentPath);
+          event.target.value = '';
+        })
+        .catch(error => console.error('Error:', error));
+    }
+
+    function showCreateFolderModal() {
+      document.getElementById('createFolderModal').style.display = 'block';
+    }
+
+    function showRenameModal(id, name, type) {
+      selectedItem = { id, type };
+      document.getElementById('newItemName').value = name;
+      document.getElementById('renameModal').style.display = 'block';
+    }
+
+    function showDeleteModal(id, type) {
+      selectedItem = { id, type };
+      document.getElementById('deleteModal').style.display = 'block';
+    }
+
+    function closeModal(modalId) {
+      document.getElementById(modalId).style.display = 'none';
+    }
+
+    function createFolder() {
+      const folderName = document.getElementById('newFolderName').value;
+      if (!folderName) return;
+
+      fetch('/api/folder', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: folderName,
+          path: currentPath
+        })
+      })
+        .then(response => response.json())
+        .then(data => {
+          loadContent(currentPath);
+          closeModal('createFolderModal');
+          document.getElementById('newFolderName').value = '';
+        })
+        .catch(error => console.error('Error:', error));
+    }
+
+    function renameItem() {
+      const newName = document.getElementById('newItemName').value;
+      if (!newName || !selectedItem) return;
+
+      fetch('/api/rename', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: selectedItem.id,
+          newName: newName,
+          type: selectedItem.type
+        })
+      })
+        .then(response => response.json())
+        .then(data => {
+          loadContent(currentPath);
+          closeModal('renameModal');
+        })
+        .catch(error => console.error('Error:', error));
+    }
+
+    function confirmDelete() {
+      if (!selectedItem) return;
+
+      fetch('/api/delete', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: selectedItem.id,
+          type: selectedItem.type
+        })
+      })
+        .then(response => response.json())
+        .then(data => {
+          loadContent(currentPath);
+          closeModal('deleteModal');
+        })
+        .catch(error => console.error('Error:', error));
+    }
+
+    function viewFile(fileId) {
+      window.open(`/api/file/${fileId}`, '_blank');
+    }
+  </script>
+</body>
+
+</html>
