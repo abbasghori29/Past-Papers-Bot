@@ -39,7 +39,7 @@ upload_tasks = {}
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 os.environ["GOOGLE_API_KEY"] = "AIzaSyCPmn7EE7hY2-hbhrvx3c17tVobQBh5_Gk"
-os.environ["OPENAI_API_KEY"] ="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"
+os.environ["OPENAI_API_KEY"] =""
 
 llm = ChatOpenAI(
     model="gpt-4o-mini-2024-07-18",
