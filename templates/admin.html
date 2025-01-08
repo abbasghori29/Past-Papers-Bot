@@ -13,6 +13,7 @@
       box-sizing: border-box;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
+    
 
     body {
       background: #f5f6fa;
@@ -366,10 +367,11 @@ function updateUrlHash(path) {
         .finally(() => hideLoading());
 }
 
-    function displayContent(data) {
+function displayContent(data) {
     const contentDiv = document.getElementById('content');
     let html = '';
 
+    // Folder display
     data.folders.forEach(folder => {
         const folderPath = constructPath(currentPath, folder.name);
         html += `
@@ -380,13 +382,14 @@ function updateUrlHash(path) {
                     <button class="btn" onclick="showRenameModal('${folderPath}', '${folder.name}', 'folder'); event.stopPropagation();">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="btn" onclick="showDeleteModal('${folderPath}', 'folder'); event.stopPropagation();">
+                    <button class="btn" onclick="showDeleteModal('${folderPath}', 'folder', '${folder.name}'); event.stopPropagation();">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
             </div>`;
     });
 
+    // File display
     data.files.forEach(file => {
         const filePath = constructPath(currentPath, file.name);
         html += `
@@ -397,7 +400,7 @@ function updateUrlHash(path) {
                     <button class="btn" onclick="showRenameModal('${filePath}', '${file.name}', 'file')">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="btn" onclick="showDeleteModal('${file.id}', 'file')">
+                    <button class="btn" onclick="showDeleteModal('${filePath}', 'file', '${file.name}')">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -510,10 +513,15 @@ function updateUrlHash(path) {
       document.getElementById('createFolderModal').style.display = 'block';
     }
    
-    function showDeleteModal(id, type) {
-      selectedItem = { id, type };
-      document.getElementById('deleteModal').style.display = 'block';
-    }
+    function showDeleteModal(path, type, name) {
+    selectedItem = {
+        path: path,
+        type: type,
+        name: name,
+        currentPath: currentPath
+    };
+    document.getElementById('deleteModal').style.display = 'block';
+}
     function closeModal(modalId) {
       document.getElementById(modalId).style.display = 'none';
     }
@@ -580,26 +588,38 @@ function renameItem() {
     })
     .catch(error => console.error('Error:', error));
 }
-    function confirmDelete() {
-      if (!selectedItem) return;
+function confirmDelete() {
+    if (!selectedItem) return;
 
-      fetch('/api/delete', {
+    const endpoint = selectedItem.type === 'folder' ? '/api/delete-folder' : '/api/delete-file';
+    
+    const payload = {
+        [selectedItem.type === 'folder' ? 'folderPath' : 'fileId']: selectedItem.path,
+        currentPath: selectedItem.currentPath
+    };
+
+    fetch(endpoint, {
         method: 'DELETE',
         headers: {
-          'Content-Type': 'application/json',
+            'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          id: selectedItem.id,
-          type: selectedItem.type
-        })
-      })
-        .then(response => response.json())
-        .then(data => {
-          loadContent(currentPath);
-          closeModal('deleteModal');
-        })
-        .catch(error => console.error('Error:', error));
-    }
+        body: JSON.stringify(payload)
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Delete operation failed');
+        }
+        return response.json();
+    })
+    .then(data => {
+        loadContent(currentPath);
+        closeModal('deleteModal');
+    })
+    .catch(error => {
+        console.error('Delete error:', error);
+        alert('Error deleting item: ' + error.message);
+    });
+}
     function viewFile(fileId) {
       window.open(`/api/file/${fileId}`, '_blank');
     }
