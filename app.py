@@ -1,12 +1,12 @@
-from flask import Flask, render_template, request, jsonify, send_file, Response
+from flask import Flask, render_template, request, jsonify, send_file, Response, flash, redirect, url_for
 from config import Config
-from models import db, Document, DocumentEmbedding,User
+from models import db, Document, DocumentEmbedding, User
 from werkzeug.utils import secure_filename
 import os
 import shutil
 import magic
 import PyPDF2
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from werkzeug.datastructures import FileStorage
 import hashlib
 from concurrent.futures import ThreadPoolExecutor
@@ -20,14 +20,10 @@ from sklearn.preprocessing import normalize
 import re
 from langchain_openai import ChatOpenAI
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from datetime import datetime
-from models import User
-from flask import flash, redirect, url_for
-from sqlalchemy.exc import IntegrityError
-import secrets
 from datetime import datetime, timedelta
 from flask_migrate import Migrate
 from langchain_groq import ChatGroq
+
 
 app = Flask(__name__)
 app.config.from_object(Config)
